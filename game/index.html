@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pokémon Emerald: Journeys (WCS Championship)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- Top Emerald HUD Bar -->
+    <div id="header-bar">
+      <div class="hud-pill" id="wcs-rank-pill">WCS Rank: #10,000 (Normal)</div>
+      <div style="display: flex; gap: 6px;">
+        <button class="hud-btn" id="btn-quick-save" style="background:#1b6336; border-color:#48bb78;">💾 Save</button>
+        <button class="hud-btn" id="btn-sound-toggle">Mute</button>
+        <button class="hud-btn" id="speed-display">1x Speed</button>
+        <button class="hud-btn" id="btn-open-menu">Menu</button>
+      </div>
+    </div>
+
+    <!-- Main Game Viewport -->
+    <div id="screen-viewport">
+      <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+      <!-- Emerald Dialogue Box -->
+      <div id="dialogue-box" class="hidden">
+        <div id="dialogue-text">Welcome to Astraea!</div>
+        <div class="arrow">▼</div>
+      </div>
+
+      <!-- Turn-Based Battle Screen Overlay -->
+      <div id="battle-screen" class="hidden">
+        <!-- Transparent Canvas for Anime Attack Animations & Beams -->
+        <canvas id="vfxCanvas"></canvas>
+
+        <!-- TV Anime Action Attack Banner -->
+        <div id="anime-action-banner" class="hidden">
+          <div id="anime-banner-title">THUNDERBOLT!</div>
+          <div id="anime-banner-sub">ELECTRIC ATTACK</div>
+        </div>
+
+        <!-- Floating Rotom Broadcast Drone -->
+        <div id="rotom-drone-cam">
+          <span class="rotom-eye">🔴</span> WCS LIVE BROADCAST
+        </div>
+
+        <!-- Opponent Arena Area -->
+        <div id="opp-area">
+          <div class="battle-hud-card">
+            <div class="hud-title-row">
+              <span id="opp-name">Wild Pokémon</span>
+              <span id="opp-lvl">Lv.5</span>
+            </div>
+            <div class="hp-bar-bg">
+              <div id="opp-hp-bar" class="hp-bar-fill"></div>
+            </div>
+          </div>
+          <div class="pokemon-stage">
+            <div class="battle-pedestal opp-pedestal"></div>
+            <img id="opp-sprite" class="pkmn-sprite" alt="Opponent">
+          </div>
+        </div>
+
+        <!-- Player Arena Area -->
+        <div id="player-area">
+          <div class="pokemon-stage">
+            <div class="battle-pedestal player-pedestal"></div>
+            <img id="player-sprite" class="pkmn-sprite" alt="Player">
+          </div>
+          <div class="battle-hud-card">
+            <div class="hud-title-row">
+              <span id="player-name">Partner</span>
+              <span id="player-lvl">Lv.5</span>
+            </div>
+            <div class="hp-bar-bg">
+              <div id="player-hp-bar" class="hp-bar-fill"></div>
+            </div>
+            <div style="text-align: right; font-size: 9px; margin-top: 3px;" id="player-hp-text">20 / 20</div>
+          </div>
+        </div>
+
+        <!-- Battle Controls Area -->
+        <div id="battle-controls">
+          <div id="battle-message">What will you do?</div>
+
+          <!-- Gimmick Buttons (Mega / Z-Move / Dynamax) -->
+          <div id="gimmick-bar">
+            <button id="btn-mega" class="gimmick-btn" style="display: none;">MEGA EVOLVE</button>
+            <button id="btn-zmove" class="gimmick-btn" style="display: none;">Z-MOVE</button>
+            <button id="btn-dynamax" class="gimmick-btn" style="display: none;">DYNAMAX / G-MAX</button>
+          </div>
+
+          <!-- 4 Moves Grid -->
+          <div id="battle-moves">
+            <button class="move-btn">Tackle</button>
+            <button class="move-btn">Growl</button>
+            <button class="move-btn">-</button>
+            <button class="move-btn">-</button>
+          </div>
+
+          <!-- Action Row: Throw Balls / Run -->
+          <div id="battle-action-row">
+            <button class="action-btn switch-action-btn" id="btn-switch-pokemon">SWITCH</button>
+            <button class="action-btn" id="btn-throw-pokeball">Pokéball</button>
+            <button class="action-btn" id="btn-throw-greatball">Great Ball</button>
+            <button class="action-btn" id="btn-throw-ultraball">Ultra Ball</button>
+            <button class="action-btn" id="btn-throw-masterball" style="background:#6b46c1;">Master Ball</button>
+            <button class="action-btn" id="btn-battle-run" style="background:#742a2a;">Run</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Battle party selector -->
+      <div id="battle-party-modal" class="modal-overlay hidden">
+        <div class="modal-box compact-modal">
+          <h2 class="modal-title">CHOOSE A POKÉMON</h2>
+          <div id="battle-party-list" class="battle-party-list"></div>
+          <button id="btn-close-party" class="hud-btn" style="background:#a83232; margin-top:10px;">Cancel</button>
+        </div>
+      </div>
+
+      <div id="battle-lead-modal" class="modal-overlay hidden">
+        <div class="modal-box compact-modal">
+          <h2 class="modal-title">CHOOSE YOUR LEAD POKÉMON</h2>
+          <p class="lead-help">Choose who goes out first.</p>
+          <div id="battle-lead-list" class="battle-party-list"></div>
+        </div>
+      </div>
+
+      <!-- Starter Selection Modal (Gens 1 to 9) -->
+      <div id="starter-modal" class="modal-overlay">
+        <div class="modal-box">
+          <h2 class="modal-title">CHOOSE YOUR PARTNER POKÉMON</h2>
+          <div class="trainer-setup">
+            <label>Trainer name <input id="trainer-name-input" maxlength="12" value="Ash" aria-label="Trainer name"></label>
+            <span>Gender</span>
+            <button class="gender-btn selected" data-gender="male">Boy</button>
+            <button class="gender-btn" data-gender="female">Girl</button>
+          </div>
+          <p style="text-align: center; font-size: 8px; color: #a0aec0; margin-bottom: 10px;">
+            Select a starter from ANY generation to begin your World Coronation Series journey!
+          </p>
+
+          <!-- Generation Tabs (1 to 9) -->
+          <div class="gen-tabs" id="gen-tabs">
+            <button class="gen-tab active" data-gen="1">Gen 1 (Kanto)</button>
+            <button class="gen-tab" data-gen="2">Gen 2 (Johto)</button>
+            <button class="gen-tab" data-gen="3">Gen 3 (Hoenn)</button>
+            <button class="gen-tab" data-gen="4">Gen 4 (Sinnoh)</button>
+            <button class="gen-tab" data-gen="5">Gen 5 (Unova)</button>
+            <button class="gen-tab" data-gen="6">Gen 6 (Kalos)</button>
+            <button class="gen-tab" data-gen="7">Gen 7 (Alola)</button>
+            <button class="gen-tab" data-gen="8">Gen 8 (Galar)</button>
+            <button class="gen-tab" data-gen="9">Gen 9 (Paldea)</button>
+          </div>
+
+          <!-- Starter Cards Grid: these initial buttons are plain HTML so the
+               player can always see a usable choice even before modules load. -->
+          <div class="starter-grid" id="starter-cards">
+            <button type="button" class="starter-card selected" data-starter="charmander"><img class="starter-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png" alt="Charmander"><div class="starter-name">Charmander</div><span class="type-badge" style="background:#F08030;">Fire</span></button>
+            <button type="button" class="starter-card" data-starter="bulbasaur"><img class="starter-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" alt="Bulbasaur"><div class="starter-name">Bulbasaur</div><span class="type-badge" style="background:#78C850;">Grass</span></button>
+            <button type="button" class="starter-card" data-starter="squirtle"><img class="starter-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png" alt="Squirtle"><div class="starter-name">Squirtle</div><span class="type-badge" style="background:#6890F0;">Water</span></button>
+            <button type="button" class="starter-card" data-starter="pikachu"><img class="starter-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu"><div class="starter-name">Pikachu</div><span class="type-badge" style="background:#F8D030;">Electric</span></button>
+          </div>
+
+          <div style="margin-top: 14px; text-align: center;">
+            <button id="btn-confirm-starter" class="move-btn" style="width: 200px; padding: 10px; background: #38a169; color: #fff;">
+              CONFIRM STARTER
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.__starterChoice = 'charmander';
+        window.__starterChoices = {
+          1: [['bulbasaur','Bulbasaur',1],['charmander','Charmander',4],['squirtle','Squirtle',7],['pikachu','Pikachu',25],['eevee','Eevee',133]],
+          2: [['chikorita','Chikorita',152],['cyndaquil','Cyndaquil',155],['totodile','Totodile',158]],
+          3: [['treecko','Treecko',252],['torchic','Torchic',255],['mudkip','Mudkip',258]],
+          4: [['turtwig','Turtwig',387],['chimchar','Chimchar',390],['piplup','Piplup',393]],
+          5: [['snivy','Snivy',495],['tepig','Tepig',498],['oshawott','Oshawott',501]],
+          6: [['chespin','Chespin',650],['fennekin','Fennekin',653],['froakie','Froakie',656]],
+          7: [['rowlet','Rowlet',722],['litten','Litten',725],['popplio','Popplio',728]],
+          8: [['grookey','Grookey',810],['scorbunny','Scorbunny',813],['sobble','Sobble',816]],
+          9: [['sprigatito','Sprigatito',906],['fuecoco','Fuecoco',909],['quaxly','Quaxly',912]]
+        };
+        window.renderStarterChoices = (gen) => {
+          const grid = document.getElementById('starter-cards');
+          if (!grid) return;
+          grid.replaceChildren();
+          (window.__starterChoices[gen] || []).forEach(([id, name, dex]) => {
+            const card = document.createElement('button');
+            card.type = 'button'; card.className = `starter-card ${window.__starterChoice === id ? 'selected' : ''}`;
+            const image = document.createElement('img');
+            image.className = 'starter-img'; image.alt = name;
+            image.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${dex}.png`;
+            image.onerror = () => { image.style.display = 'none'; };
+            const label = document.createElement('div'); label.className = 'starter-name'; label.textContent = name;
+            card.append(image, label);
+            card.addEventListener('click', () => { window.__starterChoice = id; window.renderStarterChoices(gen); });
+            grid.appendChild(card);
+          });
+        };
+        document.querySelectorAll('.gen-tab').forEach((tab) => tab.addEventListener('click', () => {
+          const gen = Number(tab.dataset.gen);
+          document.querySelectorAll('.gen-tab').forEach((item) => item.classList.toggle('active', item === tab));
+          window.renderStarterChoices(gen);
+        }));
+        window.renderStarterChoices(1);
+        document.getElementById('btn-confirm-starter').addEventListener('click', (event) => {
+          // This handler deliberately does not depend on the later UI wiring.
+          // If image/UI code changes, choosing a starter still always works.
+          const activeGame = window.game;
+          if (!activeGame) return;
+          event.stopImmediatePropagation();
+          const name = document.getElementById('trainer-name-input').value.trim();
+          activeGame.player.name = name || 'Ash';
+          activeGame.selectStarter(window.__starterChoice || 'charmander');
+          document.getElementById('starter-modal').classList.add('hidden');
+        }, true);
+      </script>
+
+      <!-- Main Pause / WCS Menu Modal -->
+      <div id="menu-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+          <h2 class="modal-title">ROTOM PHONE TRAINER MENU</h2>
+
+          <div class="menu-section">
+            <div class="menu-section-title">World Coronation Series (WCS)</div>
+            <div id="menu-rank" style="font-size: 11px; color: var(--gba-accent); font-weight: bold; margin-bottom: 4px;">
+              Rank #10,000 (Normal Class)
+            </div>
+            <p style="font-size: 8px; color: #cbd5e0; line-height: 1.4;">
+              Goal: Defeat challengers across Astraea to climb into the Masters Eight (Alain, Iris, Diantha, Lance, Steven, Cynthia, Ash) and dethrone Monarch Leon!
+            </p>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-section-title">Party Pokémon</div>
+            <div id="menu-team-list"></div>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-section-title">Legendary Catch Events Directory (All Generations)</div>
+            <div id="menu-portal-list"></div>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-section-title">Game Controls & Settings</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="hud-btn" id="menu-btn-save" style="background:#1b6336; border-color:#48bb78;">💾 Save Progress</button>
+              <button class="hud-btn" id="menu-btn-heal">Heal Party</button>
+              <button class="hud-btn" id="menu-btn-export">Export Save</button>
+              <button class="hud-btn" id="menu-btn-new-game" style="background:#a83232;">New Game</button>
+              <button class="hud-btn" id="menu-btn-cheat">Dev Cheats</button>
+              <button class="hud-btn" id="menu-btn-close" style="background: #e53e3e;">Close Menu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="pokemon-summary-modal" class="modal-overlay hidden">
+        <div class="modal-box compact-modal">
+          <h2 class="modal-title">POKÉMON SUMMARY</h2>
+          <div id="pokemon-summary-content"></div>
+          <button id="btn-close-summary" class="hud-btn" style="margin-top:10px;">Close</button>
+        </div>
+      </div>
+
+      <div id="pc-modal" class="modal-overlay hidden">
+        <div class="modal-box pc-modal-box">
+          <h2 class="modal-title">ASTRAEA POKÉMON STORAGE SYSTEM</h2>
+          <p class="pc-help">Party: <strong id="pc-party-count">0/6</strong>. Select a Pokémon to move it.</p>
+          <div class="pc-columns">
+            <section><h3>PARTY</h3><div id="pc-party-list"></div></section>
+            <section><h3>PC BOX</h3><div id="pc-box-list"></div></section>
+          </div>
+          <button id="btn-close-pc" class="hud-btn" style="margin-top:10px;">Log Off</button>
+        </div>
+      </div>
+
+      <div id="evolution-overlay" class="hidden" aria-live="polite">
+        <div class="evolution-card">
+          <div id="evolution-text">What? Your Pokémon is evolving!</div>
+          <div class="evolution-stage"><img id="evolution-old-sprite" alt="Evolving Pokémon"><span class="evolution-flash"></span><img id="evolution-new-sprite" alt="Evolved Pokémon"></div>
+        </div>
+      </div>
+
+      <!-- Emerald Multi-Slot Save Screen Modal -->
+      <div id="save-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+          <h2 class="modal-title">💾 RECORD TRAINER PROGRESS</h2>
+          
+          <div id="save-preview-card"></div>
+
+          <div class="menu-section">
+            <div class="menu-section-title">Select Save Slot (Slot 1, 2, or 3)</div>
+            <div id="save-slots-list"></div>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-section-title">Backup & Restore Save File</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <button class="hud-btn" id="btn-export-current-save" style="background:#2b6cb0;">Download Save File (.json)</button>
+              <label class="hud-btn" style="background: #4a5568; cursor: pointer;">
+                Upload / Restore File
+                <input type="file" id="save-file-input" accept=".json" style="display:none;">
+              </label>
+              <button class="hud-btn" id="btn-close-save-modal" style="background: #e53e3e; margin-left: auto;">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anime Blackout Respawn Overlay -->
+      <div id="blackout-overlay" class="hidden">
+        <div class="blackout-box">
+          <div class="blackout-title">ALL POKÉMON FAINTED</div>
+          <div class="blackout-sub">Rushing to the nearest Pokémon Center...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Virtual Gamepad (Auto-adapts to touch on Mobile & Laptop) -->
+    <div id="mobile-controller">
+      <!-- D-Pad -->
+      <div class="dpad">
+        <div class="dpad-center"></div>
+        <div class="dpad-btn" id="dpad-up">▲</div>
+        <div class="dpad-btn" id="dpad-down">▼</div>
+        <div class="dpad-btn" id="dpad-left">◀</div>
+        <div class="dpad-btn" id="dpad-right">▶</div>
+      </div>
+
+      <!-- Center Pill Buttons -->
+      <div class="system-cluster">
+        <div class="pill-touch-btn" id="btn-menu">MENU</div>
+        <div class="pill-touch-btn" id="btn-speed">TURBO</div>
+      </div>
+
+      <!-- Action Buttons (A & B) -->
+      <div class="action-cluster">
+        <div class="circle-btn" id="btn-b">B</div>
+        <div class="circle-btn" id="btn-a">A</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main ES Module Bootstrapper -->
+  <script type="module">
+    import { Game, GAME_STATES } from './src/game.js';
+    import { STARTER_OPTIONS, POKEMON_SPECIES } from './src/pokemonData.js';
+    import { Sprites } from './src/sprites.js';
+    import { Sound } from './src/audio.js';
+
+    // Initialize Game. Keep a visible error instead of leaving the starter
+    // screen blank if a saved game or browser restriction causes a failure.
+    let game;
+    try {
+      game = new Game();
+      window.game = game;
+    } catch (error) {
+      console.error('Game startup failed:', error);
+      const grid = document.getElementById('starter-cards');
+      if (grid) grid.innerHTML = '<p style="grid-column:1/-1;color:#ffd8a8;font-size:10px;line-height:1.5;">Unable to start the game. Please reload this page.</p>';
+    }
+    let selectedStarterId = window.__starterChoice || 'charmander';
+
+    // Audio toggle
+    const soundBtn = document.getElementById('btn-sound-toggle');
+    if (soundBtn) {
+      soundBtn.onclick = () => {
+        const isMuted = Sound.toggleMute();
+        soundBtn.textContent = isMuted ? 'Unmute' : 'Mute';
+      };
+    }
+    // Browsers allow Web Audio only after a user gesture. Initialize it on
+    // the first tap/click so the music and effects are not silently muted.
+    document.addEventListener('pointerdown', () => Sound.init(), { once: true, capture: true });
+
+    // Top Header Buttons
+    document.getElementById('btn-open-menu').onclick = () => game && game.toggleMenu();
+    document.getElementById('speed-display').onclick = () => {
+      if (!game) return;
+      const nextSpeed = game.speedMultiplier === 1 ? 2 : (game.speedMultiplier === 2 ? 3 : 1);
+      game.setSpeed(nextSpeed);
+    };
+
+    // Render Starter Selection UI
+    function renderStarters(gen = 1) {
+      const grid = document.getElementById('starter-cards');
+      grid.innerHTML = '';
+      const starters = STARTER_OPTIONS.filter(s => s.gen === gen);
+
+      starters.forEach(s => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `starter-card ${selectedStarterId === s.id ? 'selected' : ''}`;
+        const spriteData = { speciesKey: s.id, dexNumber: POKEMON_SPECIES[s.id]?.dexNumber, name: s.name, types: s.type };
+        const primarySprite = Sprites.getPokemonSpriteUrl(spriteData);
+        const staticSprite = Sprites.getStaticBackupSpriteUrl(spriteData);
+        const fallbackSprite = Sprites.getFallbackSvgUrl(spriteData);
+        card.innerHTML = `
+          <img class="starter-img" alt="${s.name}">
+          <div class="starter-name">${s.name}</div>
+          <div>${s.type.map(t => `<span class="type-badge" style="background:${Sprites.getTypePrimaryColor(t)};">${t}</span>`).join(' ')}</div>
+        `;
+        // Keep image failure handling out of inline HTML: a malformed remote
+        // URL must never stop the starter cards themselves from rendering.
+        const image = card.querySelector('.starter-img');
+        let imageFallbackStep = 0;
+        image.src = primarySprite;
+        image.onerror = () => {
+          imageFallbackStep++;
+          if (imageFallbackStep === 1) image.src = staticSprite;
+          else if (imageFallbackStep === 2) image.src = fallbackSprite;
+          else image.onerror = null;
+        };
+        card.onclick = () => {
+          selectedStarterId = s.id;
+          Sound.playSelect();
+          safelyRenderStarters(gen);
+        };
+        grid.appendChild(card);
+      });
+    }
+
+    function renderStarterFallback(gen = 1) {
+      const grid = document.getElementById('starter-cards');
+      grid.innerHTML = '';
+      STARTER_OPTIONS.filter(s => s.gen === gen).forEach(s => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `starter-card ${selectedStarterId === s.id ? 'selected' : ''}`;
+        card.textContent = s.name;
+        card.onclick = () => { selectedStarterId = s.id; renderStarterFallback(gen); };
+        grid.appendChild(card);
+      });
+    }
+
+    function safelyRenderStarters(gen = 1) {
+      if (window.renderStarterChoices) {
+        window.renderStarterChoices(gen);
+        return;
+      }
+      try { renderStarters(gen); } catch (error) { renderStarterFallback(gen); }
+    }
+
+    // Gen tab switching
+    document.querySelectorAll('.gen-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.gen-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const gen = parseInt(tab.dataset.gen);
+        safelyRenderStarters(gen);
+      };
+    });
+
+    // Confirm Starter Button
+    document.getElementById('btn-confirm-starter').onclick = () => {
+      const enteredName = document.getElementById('trainer-name-input').value.trim();
+      if (!game) return;
+      selectedStarterId = window.__starterChoice || selectedStarterId;
+      game.player.name = enteredName || 'Ash';
+      document.getElementById('starter-modal').classList.add('hidden');
+      game.selectStarter(selectedStarterId);
+    };
+
+    document.querySelectorAll('.gender-btn').forEach(button => {
+      button.onclick = () => {
+        if (!game) return;
+        game.player.gender = button.dataset.gender;
+        document.querySelectorAll('.gender-btn').forEach(item => item.classList.remove('selected'));
+        button.classList.add('selected');
+        Sound.playSelect();
+      };
+    });
+
+    // Initial starter render
+    if (!game || game.player.party.length === 0) {
+      // Keep the plain HTML Gen 1 choices already in the page. They provide a
+      // guaranteed usable first screen even when remote artwork is blocked.
+    } else {
+      document.getElementById('starter-modal').classList.add('hidden');
+    }
+    window.addEventListener('newgame', () => {
+      selectedStarterId = 'charmander';
+      window.__starterChoice = 'charmander';
+      document.querySelectorAll('.gen-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.gen === '1'));
+      safelyRenderStarters(1);
+    });
+
+    // Battle Action Buttons (Balls & Run)
+    document.getElementById('btn-throw-pokeball').onclick = () => game && game.battle && game.battle.throwPokeball('pokeball');
+    document.getElementById('btn-throw-greatball').onclick = () => game.battle && game.battle.throwPokeball('greatball');
+    document.getElementById('btn-throw-ultraball').onclick = () => game.battle && game.battle.throwPokeball('ultraball');
+    document.getElementById('btn-throw-masterball').onclick = () => game.battle && game.battle.throwPokeball('masterball');
+    document.getElementById('btn-battle-run').onclick = () => game.battle && game.battle.runAway();
+    document.getElementById('btn-switch-pokemon').onclick = () => game.openBattlePartySelector();
+    document.getElementById('btn-close-party').onclick = () => document.getElementById('battle-party-modal').classList.add('hidden');
+
+    // Save Screen Modal Bindings
+    const quickSaveBtn = document.getElementById('btn-quick-save');
+    if (quickSaveBtn) quickSaveBtn.onclick = () => game.openSaveModal();
+
+    const closeSaveBtn = document.getElementById('btn-close-save-modal');
+    if (closeSaveBtn) closeSaveBtn.onclick = () => game.closeSaveModal();
+
+    const exportSaveBtn = document.getElementById('btn-export-current-save');
+    if (exportSaveBtn) exportSaveBtn.onclick = () => game.downloadSaveFile();
+
+    const saveFileInput = document.getElementById('save-file-input');
+    if (saveFileInput) {
+      saveFileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+          game.uploadSaveFile(e.target.files[0]);
+        }
+      };
+    }
+
+    // Menu Modal Buttons
+    document.getElementById('menu-btn-close').onclick = () => game.closeMenuModal();
+    document.getElementById('menu-btn-save').onclick = () => {
+      game.closeMenuModal();
+      game.openSaveModal();
+    };
+    document.getElementById('menu-btn-heal').onclick = () => {
+      Sound.playHeal();
+      game.player.party.forEach(p => p.currentHp = p.stats.maxHp);
+      game.closeMenuModal();
+      game.showSaveToast('Party fully healed!');
+    };
+    document.getElementById('menu-btn-export').onclick = () => {
+      const json = JSON.stringify({ player: game.player, zone: game.overworld.currentZoneId });
+      navigator.clipboard ? navigator.clipboard.writeText(json) : prompt('Copy your save code:', json);
+      alert('Save data copied to clipboard!');
+    };
+    document.getElementById('menu-btn-cheat').onclick = () => {
+      const code = prompt('Developer Cheat Code (e.g. /godmode, /rankup, /unlockgimmicks, /level100):');
+      if (code === '/godmode' || code === '/level100') {
+        game.player.party.forEach(p => { p.level = 100; p.currentHp = 999; p.stats.maxHp = 999; p.stats.atk = 500; p.stats.spAtk = 500; });
+        alert('All Pokémon boosted to Level 100 with 999 HP!');
+      } else if (code === '/rankup') {
+        game.player.rank = Math.max(1, Math.floor(game.player.rank / 2));
+        alert(`Rank boosted! Current Rank: #${game.player.rank}`);
+      } else if (code === '/unlockgimmicks') {
+        game.player.keyItems.megaBracelet = true;
+        game.player.keyItems.zRing = true;
+        game.player.keyItems.dynamaxBand = true;
+        alert('Unlocked Mega Bracelet, Z-Ring, and Dynamax Band!');
+      } else if (code === '/giveall') {
+        game.player.bag.masterball += 50;
+        game.player.bag.ultraball += 99;
+        game.player.money += 999999;
+        alert('Added 50 Master Balls and $999,999!');
+      }
+      game.openMenuModal();
+    };
+    document.getElementById('menu-btn-new-game').onclick = () => game.startNewGame();
+    document.getElementById('btn-close-summary').onclick = () => document.getElementById('pokemon-summary-modal').classList.add('hidden');
+    document.getElementById('btn-close-pc').onclick = () => document.getElementById('pc-modal').classList.add('hidden');
+
+    // Update Rank HUD pill periodically
+    setInterval(() => {
+      const pill = document.getElementById('wcs-rank-pill');
+      if (pill && game.player) {
+        pill.textContent = `WCS Rank: #${game.player.rank}`;
+      }
+    }, 500);
+
+    // Expose game instance globally for debugging
+    window.game = game;
+  </script>
+</body>
+</html>
